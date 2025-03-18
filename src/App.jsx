@@ -8,6 +8,27 @@ import Plot from 'react-plotly.js';
 import createPlotlyRenderers from 'react-pivottable/PlotlyRenderers';
 import './App.css';
 
+// Available satellites
+const SATELLITES = [
+    { value: "AQUA_M-T", label: "Satélite referência (Aqua, tarde)" },
+    { value: "ALL_SATELLITES", label: "Todos os satélites" },
+    { value: "TERRA_M-M", label: "Terra Manhã" },
+    { value: "TERRA_M-T", label: "Terra Tarde" },
+    { value: "AQUA_M-M", label: "Aqua Manhã" },
+    { value: "GOES-16", label: "GOES-16" },
+    { value: "NOAA-18", label: "NOAA-18 Tarde" },
+    { value: "NOAA-18D", label: "NOAA-18 Manhã" },
+    { value: "MSG-03", label: "MSG-03" },
+    { value: "METOP-B", label: "METOP-B" },
+    { value: "METOP-C", label: "METOP-C" },
+    { value: "NOAA-19 Tarde", label: "NOAA-19" },
+    { value: "NOAA-19D", label: "NOAA-19 Manhã" },
+    { value: "NOAA-20", label: "NOAA-20" },
+    { value: "NOAA-21", label: "NOAA-21" },
+    { value: "NPP-375 Manhã", label: "NPP-375D" },
+    { value: "NPP-375", label: "NPP-375 Tarde" }
+];
+
 // Create Plotly renderers
 const PlotlyRenderers = createPlotlyRenderers(Plot);
 
@@ -17,15 +38,53 @@ function App() {
   const [error, setError] = useState(null);
   const [pivotState, setPivotState] = useState({});
   
+  // Date range state
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  
+  // Satellite selection state
+  const [selectedSatellite, setSelectedSatellite] = useState('AQUA_M-T');
+  
+  // Format date to YYYY-MM-DD
+  const formatDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
+  // Set default date range (last 2 days)
   useEffect(() => {
-    fetchData();
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const twoDaysAgo = new Date(today);
+    twoDaysAgo.setDate(today.getDate() - 2);
+    
+    setStartDate(formatDate(twoDaysAgo));
+    setEndDate(formatDate(yesterday));
   }, []);
+  
+  // Fetch data when component mounts or date range changes
+  useEffect(() => {
+    if (startDate && endDate) {
+      fetchData();
+    }
+  }, [startDate, endDate, selectedSatellite]);
   
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     
     try {
+      // Build the satellite filter
+      let satelliteFilter;
+      if (selectedSatellite === 'ALL_SATELLITES') {
+        satelliteFilter = ''; // No filter for all satellites
+      } else {
+        satelliteFilter = ` AND satelite in ('${selectedSatellite}')`;
+      }
+      
       // Use a proxy to avoid CORS issues
       const response = await axios.get('/api/queimadas/geoserver/wfs', {
         params: {
@@ -34,7 +93,7 @@ function App() {
           request: 'GetFeature',
           typeName: 'bdqueimadas:focos',
           outputFormat: 'application/json',
-          CQL_FILTER: "data_hora_gmt between '2025-03-13' and '2025-03-14' AND satelite in ('AQUA_M-T') AND continente_id = 8",
+          CQL_FILTER: `data_hora_gmt between '${startDate}' and '${endDate}'${satelliteFilter} AND continente_id = 8`,
           srsName: 'EPSG:3857'
         }
       });
@@ -45,11 +104,27 @@ function App() {
     } catch (err) {
       console.error('Error fetching data:', err);
       setError('Failed to fetch data. Using example data instead.');
-      // Use example data as fallback
-      setFireData(processExampleData());
+      // Could use example data here as fallback
+      // const exampleData = processExampleData();
+      // setFireData(exampleData);
     } finally {
       setLoading(false);
     }
+  };
+  
+  // Handle date change
+  const handleDateChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'startDate') {
+      setStartDate(value);
+    } else if (name === 'endDate') {
+      setEndDate(value);
+    }
+  };
+  
+  // Handle satellite change
+  const handleSatelliteChange = (e) => {
+    setSelectedSatellite(e.target.value);
   };
   
   // Process GeoJSON to flat array for pivot table
@@ -90,118 +165,7 @@ function App() {
     });
   };
   
-  // Example data as fallback
-  const processExampleData = () => {
-    const mockData = {
-      "type": "FeatureCollection",
-      "features": [
-        {
-          "type": "Feature",
-          "id": "focos.fid--4c2a18a0_195950c6af6_-29dd",
-          "geometry": {
-            "type": "Point",
-            "coordinates": [-4611423.26445, -2501313.424355]
-          },
-          "geometry_name": "geometria",
-          "properties": {
-            "id_importacao_bdq": null,
-            "id_foco_bdq": 1751775438,
-            "longitude": -41.42512,
-            "latitude": -21.91492,
-            "data_hora_gmt": "2025-03-13T17:34:00-03:00",
-            "satelite": "AQUA_M-T",
-            "municipio": "CAMPOS DOS GOYTACAZES",
-            "estado": "RIO DE JANEIRO",
-            "pais": "Brasil",
-            "precipitacao": 1.45,
-            "numero_dias_sem_chuva": 2,
-            "risco_fogo": 0.73,
-            "bioma": "Mata Atlântica",
-            "frp": 11.7
-          }
-        },
-        {
-          "type": "Feature",
-          "id": "focos.fid--4c2a18a0_195950c6af6_-29dc",
-          "geometry": {
-            "type": "Point",
-            "coordinates": [-4754391.999671, -2464893.104128]
-          },
-          "geometry_name": "geometria",
-          "properties": {
-            "id_importacao_bdq": null,
-            "id_foco_bdq": 1751775439,
-            "longitude": -42.7123,
-            "latitude": -21.59411,
-            "data_hora_gmt": "2025-03-13T17:35:00-03:00",
-            "satelite": "AQUA_M-T",
-            "municipio": "MURIAÉ",
-            "estado": "MINAS GERAIS",
-            "pais": "Brasil",
-            "precipitacao": 0.95,
-            "numero_dias_sem_chuva": 3,
-            "risco_fogo": 0.82,
-            "bioma": "Mata Atlântica",
-            "frp": 23.5
-          }
-        },
-        {
-          "type": "Feature",
-          "id": "focos.fid--4c2a18a0_195950c6af6_-29db",
-          "geometry": {
-            "type": "Point",
-            "coordinates": [-5754391.999671, -1464893.104128]
-          },
-          "geometry_name": "geometria",
-          "properties": {
-            "id_importacao_bdq": null,
-            "id_foco_bdq": 1751775440,
-            "longitude": -51.7123,
-            "latitude": -13.59411,
-            "data_hora_gmt": "2025-03-13T18:15:00-03:00",
-            "satelite": "AQUA_M-T",
-            "municipio": "PALMAS",
-            "estado": "TOCANTINS",
-            "pais": "Brasil",
-            "precipitacao": 0.15,
-            "numero_dias_sem_chuva": 15,
-            "risco_fogo": 0.95,
-            "bioma": "Cerrado",
-            "frp": 35.8
-          }
-        },
-        {
-          "type": "Feature",
-          "id": "focos.fid--4c2a18a0_195950c6af6_-29da",
-          "geometry": {
-            "type": "Point",
-            "coordinates": [-6754391.999671, -3464893.104128]
-          },
-          "geometry_name": "geometria",
-          "properties": {
-            "id_importacao_bdq": null,
-            "id_foco_bdq": 1751775441,
-            "longitude": -60.7123,
-            "latitude": -30.59411,
-            "data_hora_gmt": "2025-03-13T19:20:00-03:00",
-            "satelite": "AQUA_M-T",
-            "municipio": "PORTO ALEGRE",
-            "estado": "RIO GRANDE DO SUL",
-            "pais": "Brasil",
-            "precipitacao": 0.05,
-            "numero_dias_sem_chuva": 8,
-            "risco_fogo": 0.88,
-            "bioma": "Pampa",
-            "frp": 9.2
-          }
-        }
-      ]
-    };
-    
-    return processGeoJSON(mockData);
-  };
   
-  // Convert Web Mercator to Lat/Lng
   const webMercatorToLatLng = (x, y) => {
     const earthRadius = 6378137;
     const originShift = Math.PI * earthRadius;
@@ -217,32 +181,81 @@ function App() {
   // Some default configurations for pivot table
   const getDefaultPivotSettings = () => ({
     rows: ['estado', 'municipio'],
-    cols: ['bioma'],
+    cols: ['pais'],
     vals: ['frp'],
     aggregatorName: 'Average',
-    rendererName: 'Heatmap'
   });
   
-  // Reset the pivot table to default settings
   const resetPivotTable = () => {
     setPivotState(getDefaultPivotSettings());
   };
 
   return (
     <div className="app-container">
-      <h1>Fire Hotspots Data Analysis</h1>
+      <h1>Focos data</h1>
       
       {error && <div className="error">{error}</div>}
       
+      <div className="filter-controls">
+        <div className="filter-section">
+          <h3>Date Range</h3>
+          <div className="date-controls">
+            <div className="date-picker">
+              <label htmlFor="startDate">Start Date:</label>
+              <input
+                type="date"
+                id="startDate"
+                name="startDate"
+                value={startDate}
+                onChange={handleDateChange}
+                max={endDate}
+              />
+            </div>
+            
+            <div className="date-picker">
+              <label htmlFor="endDate">End Date:</label>
+              <input
+                type="date"
+                id="endDate"
+                name="endDate"
+                value={endDate}
+                onChange={handleDateChange}
+                min={startDate}
+              />
+            </div>
+          </div>
+        </div>
+        
+        <div className="filter-section">
+          <h3>Satellite</h3>
+          <div className="satellite-selector">
+            <select 
+              value={selectedSatellite} 
+              onChange={handleSatelliteChange}
+              className="satellite-dropdown"
+            >
+              {SATELLITES.map(satellite => (
+                <option key={satellite.value} value={satellite.value}>
+                  {satellite.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        
+        <div className="filter-actions">
+          <button onClick={fetchData} disabled={loading} className="primary-button">
+            {loading ? 'Loading...' : 'Apply Filters'}
+          </button>
+        </div>
+      </div>
+      
       <div className="controls">
-        <button onClick={fetchData} disabled={loading}>
-          {loading ? 'Loading...' : 'Refresh Data'}
-        </button>
         <button onClick={resetPivotTable}>Reset Pivot Settings</button>
       </div>
       
       {loading ? (
-        <div className="loading">Loading fire hotspot data...</div>
+        <div className="loading">Loading focos data...</div>
       ) : (
         <div className="pivot-table-container">
           <PivotTableUI
