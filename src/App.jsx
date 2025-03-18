@@ -10,23 +10,23 @@ import './App.css';
 
 // Available satellites
 const SATELLITES = [
-    { value: "AQUA_M-T", label: "Satélite referência (Aqua, tarde)" },
-    { value: "ALL_SATELLITES", label: "Todos os satélites" },
-    { value: "TERRA_M-M", label: "Terra Manhã" },
-    { value: "TERRA_M-T", label: "Terra Tarde" },
-    { value: "AQUA_M-M", label: "Aqua Manhã" },
-    { value: "GOES-16", label: "GOES-16" },
-    { value: "NOAA-18", label: "NOAA-18 Tarde" },
-    { value: "NOAA-18D", label: "NOAA-18 Manhã" },
-    { value: "MSG-03", label: "MSG-03" },
-    { value: "METOP-B", label: "METOP-B" },
-    { value: "METOP-C", label: "METOP-C" },
-    { value: "NOAA-19 Tarde", label: "NOAA-19" },
-    { value: "NOAA-19D", label: "NOAA-19 Manhã" },
-    { value: "NOAA-20", label: "NOAA-20" },
-    { value: "NOAA-21", label: "NOAA-21" },
-    { value: "NPP-375 Manhã", label: "NPP-375D" },
-    { value: "NPP-375", label: "NPP-375 Tarde" }
+  { value: "AQUA_M-T", label: "Satélite referência (Aqua, tarde)" },
+  { value: "ALL_SATELLITES", label: "Todos os satélites" },
+  { value: "TERRA_M-M", label: "Terra Manhã" },
+  { value: "TERRA_M-T", label: "Terra Tarde" },
+  { value: "AQUA_M-M", label: "Aqua Manhã" },
+  { value: "GOES-16", label: "GOES-16" },
+  { value: "NOAA-18", label: "NOAA-18 Tarde" },
+  { value: "NOAA-18D", label: "NOAA-18 Manhã" },
+  { value: "MSG-03", label: "MSG-03" },
+  { value: "METOP-B", label: "METOP-B" },
+  { value: "METOP-C", label: "METOP-C" },
+  { value: "NOAA-19 Tarde", label: "NOAA-19" },
+  { value: "NOAA-19D", label: "NOAA-19 Manhã" },
+  { value: "NOAA-20", label: "NOAA-20" },
+  { value: "NOAA-21", label: "NOAA-21" },
+  { value: "NPP-375 Manhã", label: "NPP-375D" },
+  { value: "NPP-375", label: "NPP-375 Tarde" }
 ];
 
 // Create Plotly renderers
@@ -37,14 +37,14 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [pivotState, setPivotState] = useState({});
-  
+
   // Date range state
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  
+
   // Satellite selection state
   const [selectedSatellite, setSelectedSatellite] = useState('AQUA_M-T');
-  
+
   // Format date to YYYY-MM-DD
   const formatDate = (date) => {
     const year = date.getFullYear();
@@ -52,7 +52,7 @@ function App() {
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
-  
+
   // Set default date range (last 2 days)
   useEffect(() => {
     const today = new Date();
@@ -60,22 +60,22 @@ function App() {
     yesterday.setDate(today.getDate() - 1);
     const twoDaysAgo = new Date(today);
     twoDaysAgo.setDate(today.getDate() - 2);
-    
+
     setStartDate(formatDate(twoDaysAgo));
     setEndDate(formatDate(yesterday));
   }, []);
-  
+
   // Fetch data when component mounts or date range changes
   useEffect(() => {
     if (startDate && endDate) {
       fetchData();
     }
   }, [startDate, endDate, selectedSatellite]);
-  
+
   const fetchData = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // Build the satellite filter
       let satelliteFilter;
@@ -84,7 +84,7 @@ function App() {
       } else {
         satelliteFilter = ` AND satelite in ('${selectedSatellite}')`;
       }
-      
+
       // Use a proxy to avoid CORS issues
       const response = await axios.get('/api/queimadas/geoserver/wfs', {
         params: {
@@ -97,7 +97,7 @@ function App() {
           srsName: 'EPSG:3857'
         }
       });
-      
+
       // Process the data for pivot table format
       const processedData = processGeoJSON(response.data);
       setFireData(processedData);
@@ -111,7 +111,7 @@ function App() {
       setLoading(false);
     }
   };
-  
+
   // Handle date change
   const handleDateChange = (e) => {
     const { name, value } = e.target;
@@ -121,22 +121,22 @@ function App() {
       setEndDate(value);
     }
   };
-  
+
   // Handle satellite change
   const handleSatelliteChange = (e) => {
     setSelectedSatellite(e.target.value);
   };
-  
+
   // Process GeoJSON to flat array for pivot table
   const processGeoJSON = (geoJSON) => {
     if (!geoJSON || !geoJSON.features || !geoJSON.features.length) {
       return [];
     }
-    
+
     return geoJSON.features.map(feature => {
       // Extract properties
       const props = { ...feature.properties };
-      
+
       // Format date if exists
       if (props.data_hora_gmt) {
         const date = new Date(props.data_hora_gmt);
@@ -144,7 +144,7 @@ function App() {
         props.data = date.toLocaleDateString();
         props.hora = date.toLocaleTimeString();
       }
-      
+
       // Convert coordinates if needed
       if (feature.geometry && feature.geometry.coordinates) {
         if (!props.latitude || !props.longitude) {
@@ -156,46 +156,51 @@ function App() {
           props.longitude = lng;
         }
       }
-      
+
       // Remove unnecessary properties
       const excludeProps = ['id_importacao_bdq', 'id_foco_bdq', 'geometry_name'];
       excludeProps.forEach(prop => delete props[prop]);
-      
+
       return props;
     });
   };
-  
-  
+
+  // Example data processing function remains unchanged
+  const processExampleData = () => {
+    // Your existing example data code here
+  };
+
   const webMercatorToLatLng = (x, y) => {
     const earthRadius = 6378137;
     const originShift = Math.PI * earthRadius;
-    
+
     const lng = (x / originShift) * 180;
     let lat = (y / originShift) * 180;
-    
-    lat = 180/Math.PI * (2 * Math.atan(Math.exp(lat * Math.PI / 180)) - Math.PI / 2);
-    
+
+    lat = 180 / Math.PI * (2 * Math.atan(Math.exp(lat * Math.PI / 180)) - Math.PI / 2);
+
     return { lat, lng };
   };
-  
+
   // Some default configurations for pivot table
   const getDefaultPivotSettings = () => ({
-    rows: ['estado', 'municipio'],
+    rows: ['estado'],
     cols: ['pais'],
     vals: ['frp'],
     aggregatorName: 'Average',
+    rendererName: 'Heatmap'
   });
-  
+
   const resetPivotTable = () => {
     setPivotState(getDefaultPivotSettings());
   };
 
   return (
     <div className="app-container">
-      <h1>Focos data</h1>
-      
+      <h1>Focos Data Analysis</h1>
+
       {error && <div className="error">{error}</div>}
-      
+
       <div className="filter-controls">
         <div className="filter-section">
           <h3>Date Range</h3>
@@ -211,7 +216,7 @@ function App() {
                 max={endDate}
               />
             </div>
-            
+
             <div className="date-picker">
               <label htmlFor="endDate">End Date:</label>
               <input
@@ -225,12 +230,12 @@ function App() {
             </div>
           </div>
         </div>
-        
+
         <div className="filter-section">
           <h3>Satellite</h3>
           <div className="satellite-selector">
-            <select 
-              value={selectedSatellite} 
+            <select
+              value={selectedSatellite}
               onChange={handleSatelliteChange}
               className="satellite-dropdown"
             >
@@ -242,20 +247,20 @@ function App() {
             </select>
           </div>
         </div>
-        
+
         <div className="filter-actions">
           <button onClick={fetchData} disabled={loading} className="primary-button">
             {loading ? 'Loading...' : 'Apply Filters'}
           </button>
         </div>
       </div>
-      
+
       <div className="controls">
-        <button onClick={resetPivotTable}>Reset Pivot Settings</button>
+        <button onClick={resetPivotTable}>Reset Pivot</button>
       </div>
-      
+
       {loading ? (
-        <div className="loading">Loading focos data...</div>
+        <div className="loading">Loading...</div>
       ) : (
         <div className="pivot-table-container">
           <PivotTableUI
